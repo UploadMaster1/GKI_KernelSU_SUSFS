@@ -135,6 +135,11 @@ jobs:
           
           $REPO --trace sync -c -j$(nproc --all) --no-tags --fail-fast
 
+      - name: Export kallsyms_lookup_name for KernelSU
+        run: |
+         echo "EXPORT_SYMBOL_GPL(kallsyms_lookup_name);" >> "$CONFIG/common/kernel/kallsyms.c"
+
+         
       - name: Extract Actual Sublevel for LTS Builds
         if: inputs.sub_level == 'X'
         run: |
