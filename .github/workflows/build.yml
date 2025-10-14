@@ -339,6 +339,21 @@ jobs:
           echo "CONFIG_LTO_CLANG=y" >> "$defconfig"
           echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> "$defconfig"
           echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3=n" >> "$defconfig"
+
+          
+          # /dev/mem Access: Ensure CONFIG_DEVMEM is enabled and CONFIG_STRICT_DEVMEM is disabled
+          # First, remove or comment out any existing lines that disable CONFIG_DEVMEM
+          sed -i 's/^CONFIG_DEVMEM=n/# CONFIG_DEVMEM is not set/' "$defconfig"
+          sed -i 's/^# CONFIG_DEVMEM is not set/CONFIG_DEVMEM=y/' "$defconfig"
+          # Explicitly add the desired setting
+          echo "CONFIG_DEVMEM=y" >> "$defconfig"
+          # Explicitly disable CONFIG_STRICT_DEVMEM
+          sed -i 's/^CONFIG_STRICT_DEVMEM=y/# CONFIG_STRICT_DEVMEM is not set/' "$defconfig"
+          echo "# CONFIG_STRICT_DEVMEM is not set" >> "$defconfig"
+          # Ensure CONFIG_DEVKMEM is enabled as well
+          sed -i 's/^CONFIG_DEVKMEM=n/# CONFIG_DEVKMEM is not set/' "$defconfig"
+          sed -i 's/^# CONFIG_DEVKMEM is not set/CONFIG_DEVKMEM=y/' "$defconfig"
+          echo "CONFIG_DEVKMEM=y" >> "$defconfig"
           
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
