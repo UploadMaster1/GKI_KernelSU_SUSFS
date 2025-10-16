@@ -406,8 +406,9 @@ jobs:
             exit 1
           fi
 
-          cp "$VMLINUX_PATH" ./vmlinux
-          echo "vmlinux copied to root for artifact upload."
+          # Copy to workspace root so upload-artifact can find it
+          cp "$VMLINUX_PATH" "$GITHUB_WORKSPACE/vmlinux"
+          echo "vmlinux copied to workspace root for artifact upload."
 
       - name: Create AK3 ZIP
         run: |
@@ -570,4 +571,4 @@ jobs:
         with:
           name: WKSU-${{ env.KSUVER }}-${{ inputs.android_version }}-${{ inputs.kernel_version }}.${{ env.ACTUAL_SUBLEVEL || inputs.sub_level }}-${{ inputs.os_patch_level }}-${{ matrix.apply_module_check_bypass && 'Module_Check_Bypass' || 'Normal' }}-vmlinux
           path: vmlinux
-          compression-level: 6  # vmlinux is large; compression helps
+          compression-level: 6
