@@ -388,6 +388,27 @@ jobs:
             tools/bazel build --config=fast --lto=thin //common:kernel_aarch64_dist || exit 1
           fi
 
+
+
+      - name: Copy vmlinux for release
+        run: |
+          cd "$CONFIG"
+          VMLINUX_PATH=""
+          # Locate vmlinux based on build system
+          if [ -f "./out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/vmlinux" ]; then
+            VMLINUX_PATH="./out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/vmlinux"
+          elif [ -f "./bazel-bin/common/kernel_aarch64/vmlinux" ]; then
+            VMLINUX_PATH="./bazel-bin/common/kernel_aarch64/vmlinux"
+          elif [ -f "./common/vmlinux" ]; then
+            VMLINUX_PATH="./common/vmlinux"
+          else
+            echo "Warning: vmlinux not found in expected locations."
+            exit 1
+          fi
+
+          cp "$VMLINUX_PATH" ./vmlinux
+          echo "vmlinux copied to root for artifact upload."
+
       - name: Create AK3 ZIP
         run: |
           # Copy Image from normal build locations
@@ -543,3 +564,10 @@ jobs:
         with:
           name: WKSU-${{ env.KSUVER }}-${{ inputs.android_version }}-${{ inputs.kernel_version }}.${{ env.ACTUAL_SUBLEVEL || inputs.sub_level }}-${{ inputs.os_patch_level }}-${{ matrix.apply_module_check_bypass && 'Module_Check_Bypass' || 'Normal' }}-boot-lz4
           path: "*-boot-lz4.img"
+
+      - name: Upload vmlinux
+        uses: actions/upload-artifact@v4
+        with:
+          name: WKSU-${{ env.KSUVER }}-${{ inputs.android_version }}-${{ inputs.kernel_version }}.${{ env.ACTUAL_SUBLEVEL || inputs.sub_level }}-${{ inputs.os_patch_level }}-${{ matrix.apply_module_check_bypass && 'Module_Check_Bypass' || 'Normal' }}-vmlinux
+          path: vmlinux
+          compression-level: 6  # vmlinux is large; compression helps
