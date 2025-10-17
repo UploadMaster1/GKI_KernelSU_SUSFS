@@ -354,6 +354,35 @@ jobs:
           sed -i 's/^CONFIG_DEVKMEM=n/# CONFIG_DEVKMEM is not set/' "$defconfig"
           sed -i 's/^# CONFIG_DEVKMEM is not set/CONFIG_DEVKMEM=y/' "$defconfig"
           echo "CONFIG_DEVKMEM=y" >> "$defconfig"
+          sed -i '/^CONFIG_KGDB[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_KGDB_SERIAL_CONSOLE[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_DEBUG_KERNEL[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_DEBUG_INFO[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_DEBUG_FS[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_DEBUG_INFO_REDUCED[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_NET_9P[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_NET_9P_VIRTIO[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_GDB_SCRIPTS[= ].*/d' "$defconfig"
+
+          # Handle CONFIG_CMDLINE: append console=ttyAMA0 if not already present
+          if grep -q "^CONFIG_CMDLINE" "$defconfig"; then
+              # If CONFIG_CMDLINE exists, append console=ttyAMA0 to it
+              sed -i '/^CONFIG_CMDLINE/s/CONFIG_CMDLINE="\(.*\)"/CONFIG_CMDLINE="\1,console=ttyAMA0"/' "$defconfig"
+          else
+              # If CONFIG_CMDLINE doesn't exist, add it
+              echo 'CONFIG_CMDLINE="console=ttyAMA0"' >> "$defconfig"
+          fi
+
+          # Append the new configurations
+          echo "CONFIG_KGDB=y" >> "$defconfig"
+          echo "CONFIG_KGDB_SERIAL_CONSOLE=y" >> "$defconfig"
+          echo "CONFIG_DEBUG_KERNEL=y" >> "$defconfig"
+          echo "CONFIG_DEBUG_INFO=y" >> "$defconfig"
+          echo "CONFIG_DEBUG_FS=y" >> "$defconfig"
+          echo "CONFIG_DEBUG_INFO_REDUCED=n" >> "$defconfig"
+          echo "CONFIG_NET_9P=y" >> "$defconfig"
+          echo "CONFIG_NET_9P_VIRTIO=y" >> "$defconfig"
+          echo "CONFIG_GDB_SCRIPTS=y" >> "$defconfig"
           
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
