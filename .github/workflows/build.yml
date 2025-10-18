@@ -343,6 +343,8 @@ jobs:
           
           # /dev/mem Access: Ensure CONFIG_DEVMEM is enabled and CONFIG_STRICT_DEVMEM is disabled
           # First, remove or comment out any existing lines that disable CONFIG_DEVMEM
+          sed -i '/^CONFIG_VIRTIO_PCI[= ]/d; /^# CONFIG_VIRTIO_PCI is not set$/d' "$defconfig"
+          sed -i '/^CONFIG_VIRTIO_BLK[= ]/d; /^# CONFIG_VIRTIO_BLK is not set$/d' "$defconfig"
           echo "CONFIG_VIRTIO_PCI=y" >> "$defconfig"
           echo "CONFIG_VIRTIO_BLK=y" >> "$defconfig"
           sed -i 's/^CONFIG_DEVMEM=n/# CONFIG_DEVMEM is not set/' "$defconfig"
