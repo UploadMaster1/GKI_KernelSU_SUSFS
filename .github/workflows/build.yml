@@ -218,6 +218,17 @@ jobs:
           cp ../../kernel_patches/wild/susfs_fix_patches/v1.5.11/fix_kernel_compat.c.patch ./
           patch -p1 --forward < fix_kernel_compat.c.patch
 
+      - name: Apply task_mmu fix with sed
+        run: |
+          cd "$CONFIG/common"
+          sed -i '/show_vma_header_prefix(m, start, end, flags, pgoff, dev, ino);/a \
+          #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT\
+          \tif (unlikely(ino & SUS_INO_MASK_BIT))\\\
+          \t\tgoto show_pad;\\\
+          #endif' fs/proc/task_mmu.c
+          sed -i 's/^done:/show_pad:\\
+          done:/' fs/proc/task_mmu.c
+
       - name: Getting KernelSU Version
         run: |
           cd "$CONFIG/Wild_KSU/kernel"
