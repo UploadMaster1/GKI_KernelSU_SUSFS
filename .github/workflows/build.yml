@@ -226,8 +226,7 @@ jobs:
           \tif (unlikely(ino & SUS_INO_MASK_BIT))\\\
           \t\tgoto show_pad;\\\
           #endif' fs/proc/task_mmu.c
-          sed -i 's/^done:/show_pad:\\
-          done:/' fs/proc/task_mmu.c
+          sed -i 's/^done:/show_pad:\\ndone:/' fs/proc/task_mmu.c
 
       - name: Getting KernelSU Version
         run: |
