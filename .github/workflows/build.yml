@@ -322,33 +322,33 @@ jobs:
             done
           fi
 
-      - name: Add BBG
-        run: |
-          cd "$CONFIG"
-          echo "Adding BBG..."
-          wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
-          echo "CONFIG_BBG=y" >> common/arch/arm64/configs/gki_defconfig
+      #- name: Add BBG
+        #run: |
+          #cd "$CONFIG"
+          #echo "Adding BBG..."
+          #wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
+          #echo "CONFIG_BBG=y" >> common/arch/arm64/configs/gki_defconfig
           
           # Before sed: Show the original LSM default line for comparison
-          echo "=== Before sed ==="
-          sed -n '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ p }' common/security/Kconfig
+          #echo "=== Before sed ==="
+          #sed -n '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ p }' common/security/Kconfig
           
           # Apply the sed command to add baseband_guard to default security configurations
-          sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/lockdown/lockdown,baseband_guard/ } }' common/security/Kconfig
+          #sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/lockdown/lockdown,baseband_guard/ } }' common/security/Kconfig
           
           # After sed: Show the updated LSM default line
-          echo "=== After sed ==="
-          sed -n '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ p }' common/security/Kconfig
+          #echo "=== After sed ==="
+          #sed -n '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ p }' common/security/Kconfig
           
           # Confirm baseband_guard is now present (should output the line if successful)
-          echo "=== Confirmation: grep for baseband_guard ==="
-          if ! grep -q "baseband_guard" common/security/Kconfig; then
-            echo "ERROR: baseband_guard not found after sed - stopping workflow"
-            exit 1
-          else
-            echo "SUCCESS: baseband_guard found in security configuration"
-            grep "baseband_guard" common/security/Kconfig
-          fi
+          #echo "=== Confirmation: grep for baseband_guard ==="
+          #if ! grep -q "baseband_guard" common/security/Kconfig; then
+            #echo "ERROR: baseband_guard not found after sed - stopping workflow"
+            #exit 1
+          #else
+            #echo "SUCCESS: baseband_guard found in security configuration"
+            #grep "baseband_guard" common/security/Kconfig
+          #fi
 
       - name: Apply Module Check Bypass
         if: ${{ matrix.apply_module_check_bypass == 'bypass' }}
@@ -459,6 +459,53 @@ jobs:
           echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> "$defconfig"
           echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3=n" >> "$defconfig"
           echo "CONFIG_OPTIMIZE_INLINING=y" >> "$defconfig"
+
+          # /dev/mem Access: Ensure CONFIG_DEVMEM is enabled and CONFIG_STRICT_DEVMEM is disabled
+          # First, remove or comment out any existing lines that disable CONFIG_DEVMEM
+          sed -i '/^CONFIG_VIRTIO_PCI[= ]/d; /^# CONFIG_VIRTIO_PCI is not set$/d' "$defconfig"
+          sed -i '/^CONFIG_VIRTIO_BLK[= ]/d; /^# CONFIG_VIRTIO_BLK is not set$/d' "$defconfig"
+          echo "CONFIG_VIRTIO_PCI=y" >> "$defconfig"
+          echo "CONFIG_VIRTIO_BLK=y" >> "$defconfig"
+          sed -i 's/^CONFIG_DEVMEM=n/# CONFIG_DEVMEM is not set/' "$defconfig"
+          sed -i 's/^# CONFIG_DEVMEM is not set/CONFIG_DEVMEM=y/' "$defconfig"
+          # Explicitly add the desired setting
+          echo "CONFIG_DEVMEM=y" >> "$defconfig"
+          # Explicitly disable CONFIG_STRICT_DEVMEM
+          sed -i 's/^CONFIG_STRICT_DEVMEM=y/# CONFIG_STRICT_DEVMEM is not set/' "$defconfig"
+          echo "# CONFIG_STRICT_DEVMEM is not set" >> "$defconfig"
+          # Ensure CONFIG_DEVKMEM is enabled as well
+          sed -i 's/^CONFIG_DEVKMEM=n/# CONFIG_DEVKMEM is not set/' "$defconfig"
+          sed -i 's/^# CONFIG_DEVKMEM is not set/CONFIG_DEVKMEM=y/' "$defconfig"
+          echo "CONFIG_DEVKMEM=y" >> "$defconfig"
+          sed -i '/^CONFIG_KGDB[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_KGDB_SERIAL_CONSOLE[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_DEBUG_KERNEL[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_DEBUG_INFO[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_DEBUG_FS[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_DEBUG_INFO_REDUCED[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_NET_9P[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_NET_9P_VIRTIO[= ].*/d' "$defconfig"
+          sed -i '/^CONFIG_GDB_SCRIPTS[= ].*/d' "$defconfig"
+
+          # Handle CONFIG_CMDLINE: append console=ttyAMA0 if not already present
+          if grep -q "^CONFIG_CMDLINE" "$defconfig"; then
+              # If CONFIG_CMDLINE exists, append console=ttyAMA0 to it
+              sed -i '/^CONFIG_CMDLINE/s/CONFIG_CMDLINE="\(.*\)"/CONFIG_CMDLINE="\1,console=ttyAMA0"/' "$defconfig"
+          else
+              # If CONFIG_CMDLINE doesn't exist, add it
+              echo 'CONFIG_CMDLINE="console=ttyAMA0"' >> "$defconfig"
+          fi
+
+          # Append the new configurations
+          echo "CONFIG_KGDB=y" >> "$defconfig"
+          echo "CONFIG_KGDB_SERIAL_CONSOLE=y" >> "$defconfig"
+          echo "CONFIG_DEBUG_KERNEL=y" >> "$defconfig"
+          echo "CONFIG_DEBUG_INFO=y" >> "$defconfig"
+          echo "CONFIG_DEBUG_FS=y" >> "$defconfig"
+          echo "CONFIG_DEBUG_INFO_REDUCED=n" >> "$defconfig"
+          echo "CONFIG_NET_9P=y" >> "$defconfig"
+          echo "CONFIG_NET_9P_VIRTIO=y" >> "$defconfig"
+          echo "CONFIG_GDB_SCRIPTS=y" >> "$defconfig"
           
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
