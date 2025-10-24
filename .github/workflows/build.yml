@@ -497,11 +497,11 @@ jobs:
           if grep -q "^CONFIG_CMDLINE" "$defconfig"; then
               # If CONFIG_CMDLINE exists, append only missing arguments
               sed -i '/^CONFIG_CMDLINE=/{
-                  s/"$/ ,console=ttyAMA0 ramoops.mem_address=0x80000000 ramoops.mem_size=0x008f4000 ramoops.console_size=0x00080000 ramoops.record_size=0x00040000 ramoops.pmsg_size=0x00040000"/
+                  s/"$/ ,console=ttyAMA0"/
               }' "$defconfig"
           else
               # If CONFIG_CMDLINE doesn't exist, add it
-              echo 'CONFIG_CMDLINE="console=ttyAMA0 ramoops.mem_address=0x80000000 ramoops.mem_size=0x008f4000 ramoops.console_size=0x00080000 ramoops.record_size=0x00040000 ramoops.pmsg_size=0x00040000"' >> "$defconfig"
+              echo 'CONFIG_CMDLINE="console=ttyAMA0"' >> "$defconfig"
           fi
 
           # Append the new configurations
