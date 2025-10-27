@@ -33,18 +33,6 @@ jobs:
         apply_module_check_bypass: ["normal", "bypass"]
 
     steps:
-      - name: Maximize Build Space
-        uses: AdityaGarg8/remove-unwanted-software@v5
-        with:
-          remove-dotnet: 'true'          # Frees ~2 GB
-          remove-android: 'true'         # Frees ~9 GB
-          remove-haskell: 'true'         # Frees ~5.2 GB
-          remove-codeql: 'true'          # Frees ~5.4 GB
-          remove-docker-images: 'true'   # Frees ~3.2 GB
-          remove-large-packages: 'true'  # Frees ~3.1 GB
-          remove-swapfile: 'true'        # Frees ~4 GB
-          remove-cached-tools: 'false'   # Avoid unless confirmed safe
-          verbose: 'true'                # Enable detailed logging
           
       - name: Set CONFIG Environment Variable
         run: |
@@ -497,11 +485,11 @@ jobs:
           if grep -q "^CONFIG_CMDLINE" "$defconfig"; then
               # If CONFIG_CMDLINE exists, append only missing arguments
               sed -i '/^CONFIG_CMDLINE=/{
-                  s/"$/ ,console=ttyAMA0 ramoops.mem_address=0xa7c5c0000 ramoops.mem_size=0x240000 ramoops.console_size=0x40000 ramoops.pmsg_size=0x200000 ramoops.record_size=0x8000"/
+                  s/"$/ ,console=ttyAMA0 ramoops.mem_address=0x80d00000 ramoops.mem_size=0x240000 ramoops.console_size=0x40000 ramoops.pmsg_size=0x200000 ramoops.record_size=0x8000"/
               }' "$defconfig"
           else
               # If CONFIG_CMDLINE doesn't exist, add it
-              echo 'CONFIG_CMDLINE="console=ttyAMA0 ramoops.mem_address=0xa7c5c0000 ramoops.mem_size=0x240000 ramoops.console_size=0x40000 ramoops.pmsg_size=0x200000 ramoops.record_size=0x8000"' >> "$defconfig"
+              echo 'CONFIG_CMDLINE="console=ttyAMA0 ramoops.mem_address=0x80d00000 ramoops.mem_size=0x240000 ramoops.console_size=0x40000 ramoops.pmsg_size=0x200000 ramoops.record_size=0x8000"' >> "$defconfig"
           fi
 
           # Append the new configurations
