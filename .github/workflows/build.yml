@@ -289,7 +289,7 @@ jobs:
             echo "            /* KSMA: map 0xfffffff800000000 -> 0xa8000000 with EL0 RW */"
             echo "            adrp    x0, init_pg_dir"
             echo "            ldr     x5, =0xa8000000          // physical base (1GB aligned)"
-            echo "            ldr     x6, =0x7d1               // Load attributes into temp register"
+            echo "            ldr     x6, =0x741               // Load attributes into temp register"
             echo "            orr     x5, x5, x6               // OR with attributes"
             echo "            ldr     x6, =0xe800000000000000   // Load UXN/PXN bits into temp register"
             echo "            orr     x5, x5, x6               // OR with UXN/PXN bits"
