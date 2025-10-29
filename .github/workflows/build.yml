@@ -289,8 +289,10 @@ jobs:
             echo "            /* KSMA: map 0xfffffff800000000 -> 0xa8000000 with EL0 RW */"
             echo "            adrp    x0, init_pg_dir"
             echo "            ldr     x5, =0xa8000000          // physical base (1GB aligned)"
-            echo "            orr     x5, x5, #0x7d1           // Valid, AP=11 (EL0+EL1 RW), AF, SH=11, Attr=100"
-            echo "            orr     x5, x5, #0xe800000000000000 // UXN=1, PXN=1, Normal WB"
+            echo "            ldr     x6, =0x7d1               // Load attributes into temp register"
+            echo "            orr     x5, x5, x6               // OR with attributes"
+            echo "            ldr     x6, =0xe800000000000000   // Load UXN/PXN bits into temp register"
+            echo "            orr     x5, x5, x6               // OR with UXN/PXN bits"
             echo "            str     x5, [x0, #0x1e0 * 8]    // store into swapper_pg_dir[0x1e0]"
             echo ""
           } > /tmp/ksma_patch.txt
