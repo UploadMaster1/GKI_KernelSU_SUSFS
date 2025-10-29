@@ -476,6 +476,7 @@ jobs:
           echo "CONFIG_PTDUMP_DEBUGFS=y" >> "$defconfig"
           echo "CONFIG_DEBUG_VM_PGTABLE=y" >> "$defconfig"
           echo "CONFIG_DEBUG_VM=y" >> "$defconfig"
+          echo "CONFIG_KALLSYMS_ALL=y" >> "$defconfig"
           echo "CONFIG_VIRTIO_PCI=y" >> "$defconfig"
           echo "CONFIG_VIRTIO_BLK=y" >> "$defconfig"
           sed -i 's/^CONFIG_DEVMEM=n/# CONFIG_DEVMEM is not set/' "$defconfig"
