@@ -365,8 +365,8 @@ EOF
 
           # Create the Kbuild file for the rootkit module
           cat > Kbuild << 'EOF'
-obj-m := rootkit.o
-EOF
+          obj-m := rootkit.o
+          EOF
           echo "Created Kbuild file for rootkit"
 
           # Modify the top-level Makefile to include the rootkit module in the build
@@ -836,7 +836,7 @@ EOF
           echo "Changing to configuration directory: $CONFIG..."
           cd bootimgs
           
-          GKI_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10- "${{ inputs.os_patch_level }}"_r1.zip
+          GKI_URL="https://dl.google.com/android/gki/gki-certified-boot-android12-5.10- "${{ inputs.os_patch_level }}"_r1.zip"
           FALLBACK_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2023-01_r1.zip 
           
           # Check if the GKI URL is available
