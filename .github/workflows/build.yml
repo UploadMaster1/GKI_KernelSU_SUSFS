@@ -44,7 +44,7 @@ jobs:
 
       - name: Setup Build Environment
         run: |
-          AOSP_MIRROR=https://android.googlesource.com 
+          AOSP_MIRROR=https://android.googlesource.com
           BRANCH=main-kernel-2025
           git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth 1 kernel-build-tools &
           git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth 1 mkbootimg &
@@ -57,7 +57,7 @@ jobs:
           echo "PATH=$GITHUB_WORKSPACE/kernel-build-tools/linux-x86/bin:$PATH" >> $GITHUB_ENV
           
           mkdir -p ./git-repo
-          curl https://storage.googleapis.com/git-repo-downloads/repo  > ./git-repo/repo
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ./git-repo/repo
           chmod a+rx ./git-repo/repo
           echo "REPO=$GITHUB_WORKSPACE/./git-repo/repo" >> $GITHUB_ENV
 
@@ -74,9 +74,9 @@ jobs:
           ANYKERNEL_BRANCH="gki-2.0"
           SUSFS_BRANCH="gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}"
           
-          git clone https://github.com/WildKernels/AnyKernel3.git  -b "$ANYKERNEL_BRANCH"
-          git clone https://github.com/WildKernels/kernel_patches.git 
-          git clone https://gitlab.com/simonpunk/susfs4ksu.git  -b "$SUSFS_BRANCH"
+          git clone https://github.com/WildKernels/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
+          git clone https://github.com/WildKernels/kernel_patches.git
+          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
           
           # Checkout specific commits for SUSFS v1.5.9 if enabled
           if [ "${{ inputs.susfs_version }}" = "v1.5.9" ]; then
@@ -138,9 +138,9 @@ jobs:
           
           FORMATTED_BRANCH="${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.os_patch_level }}"
           
-          $REPO init --depth=1 --u https://android.googlesource.com/kernel/manifest  -b common-${FORMATTED_BRANCH} --repo-rev=v2.16
+          $REPO init --depth=1 --u https://android.googlesource.com/kernel/manifest -b common-${FORMATTED_BRANCH} --repo-rev=v2.16
           
-          REMOTE_BRANCH=$(git ls-remote https://android.googlesource.com/kernel/common  ${FORMATTED_BRANCH})
+          REMOTE_BRANCH=$(git ls-remote https://android.googlesource.com/kernel/common ${FORMATTED_BRANCH})
           DEFAULT_MANIFEST_PATH=.repo/manifests/default.xml
           if grep -q deprecated <<< $REMOTE_BRANCH; then
             sed -i "s/\"${FORMATTED_BRANCH}\"/\"deprecated\/${FORMATTED_BRANCH}\"/g" $DEFAULT_MANIFEST_PATH
@@ -220,7 +220,7 @@ jobs:
       - name: Add KernelSU
         run: |
           cd "$CONFIG"
-          curl -LSs "https://raw.githubusercontent.com/WildKernels/Wild_KSU/wild/kernel/setup.sh " | bash -s wild
+          curl -LSs "https://raw.githubusercontent.com/WildKernels/Wild_KSU/wild/kernel/setup.sh" | bash -s wild
 
       - name: Getting KernelSU Version
         run: |
@@ -386,7 +386,6 @@ jobs:
               echo "Appended rootkit.o to kernel Makefile (fallback)"
           fi
 
-      # ---- END NEW STEP ----
 
       - name: Scan and collect patch rejects
         if: ${{ always() }}
@@ -422,7 +421,7 @@ jobs:
         #run: |
           #cd "$CONFIG"
           #echo "Adding BBG..."
-          #wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh  | bash
+          #wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
           #echo "CONFIG_BBG=y" >> common/arch/arm64/configs/gki_defconfig
           
           # Before sed: Show the original LSM default line for comparison
@@ -678,6 +677,18 @@ jobs:
           cp "$VMLINUX_PATH" "$GITHUB_WORKSPACE/vmlinux"
           echo "vmlinux copied to workspace root for artifact upload."
 
+      - name: Prepare AnyKernel3
+        run: |
+          # Copy Image from normal build locations
+          if [ -f "./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" ]; then
+            cp ./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image AnyKernel3/Image
+          elif [ -f "./$CONFIG/bazel-bin/common/kernel_aarch64/Image" ]; then
+            cp ./$CONFIG/bazel-bin/common/kernel_aarch64/Image AnyKernel3/Image
+          else
+            echo "Error: Image file not found in any expected location"
+            exit 1
+          fi
+
       # ---- NEW STEP: Locate and Copy rootkit.ko and System.map after build ----
       - name: Locate and Copy rootkit.ko and System.map
         run: |
@@ -730,21 +741,6 @@ jobs:
             echo "Error: System.map not found after build."
             exit 1
           fi
-
-      # ---- END NEW STEP ----
-
-      - name: Prepare AnyKernel3
-        run: |
-          # Copy Image from normal build locations
-          if [ -f "./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" ]; then
-            cp ./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image AnyKernel3/Image
-          elif [ -f "./$CONFIG/bazel-bin/common/kernel_aarch64/Image" ]; then
-            cp ./$CONFIG/bazel-bin/common/kernel_aarch64/Image AnyKernel3/Image
-          else
-            echo "Error: Image file not found in any expected location"
-            exit 1
-          fi
-
       - name: Search for Kernel Modules
         run: |
           echo "Searching for kernel modules (.ko files)..."
@@ -835,8 +831,8 @@ jobs:
           echo "Changing to configuration directory: $CONFIG..."
           cd bootimgs
           
-          GKI_URL="https://dl.google.com/android/gki/gki-certified-boot-android12-5.10- "${{ inputs.os_patch_level }}"_r1.zip"
-          FALLBACK_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2023-01_r1.zip 
+          GKI_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-"${{ inputs.os_patch_level }}"_r1.zip
+          FALLBACK_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2023-01_r1.zip
           
           # Check if the GKI URL is available
           echo "Checking if GKI kernel URL is reachable: $GKI_URL"
@@ -915,7 +911,7 @@ jobs:
             *-boot-lz4.img
           compression-level: 9
 
-      # ---- NEW STEP: Upload rootkit.ko and System.map as artifacts ----
+   # ---- NEW STEP: Upload rootkit.ko and System.map as artifacts ----
       - name: Upload rootkit.ko and System.map
         uses: actions/upload-artifact@v4
         with:
@@ -924,8 +920,6 @@ jobs:
             rootkit.ko
             System.map
           compression-level: 6
-
-      # ---- END NEW STEP ----
 
       - name: Upload Build Diagnostics
         if: ${{ always() }}
