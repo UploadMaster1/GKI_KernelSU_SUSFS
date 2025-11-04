@@ -281,23 +281,6 @@ jobs:
           patch -p1 -F 3 < scope_min_manual_hooks_v1.4.patch
 
 
-      - name: Apply KSMA Mapping Patch
-        run: |
-          cd "$CONFIG/common"
-          {
-            echo ""
-            echo "            /* KSMA: map 0xfffffff800000000 -> 0xa8000000 with EL0 RW */"
-            echo "            adrp    x0, init_pg_dir"
-            echo "            ldr     x5, =0xa8000000          // physical base (1GB aligned)"
-            echo "            ldr     x6, =0x741               // Load attributes into temp register"
-            echo "            orr     x5, x5, x6               // OR with attributes"
-            echo "            ldr     x6, =0xe800000000000000   // Load UXN/PXN bits into temp register"
-            echo "            orr     x5, x5, x6               // OR with UXN/PXN bits"
-            echo "            str     x5, [x0, #0x1e0 * 8]    // store into swapper_pg_dir[0x1e0]"
-            echo ""
-          } > /tmp/ksma_patch.txt
-          sed -i '/\tmap_memory x0, x1, x5, x6, x7, x3, x4, x10, x11, x12, x13, x14/r /tmp/ksma_patch.txt' arch/arm64/kernel/head.S
-
       - name: Scan and collect patch rejects
         if: ${{ always() }}
         run: |
@@ -387,7 +370,7 @@ jobs:
 
 
       - name: Apply Manual Physical-to-Virtual Mapping Patch 
-            run: |
+        run: |
                   cd "$CONFIG/common"
                   cat > mapping.patch << 'EOF'
                   diff --git a/arch/arm64/mm/mmu.c b/arch/arm64/mm/mmu.c
