@@ -371,37 +371,29 @@ jobs:
 
       - name: Apply Manual Physical-to-Virtual Mapping Patch 
         run: |
-                  cd "$CONFIG/common"
-                  cat > mapping.patch << 'EOF'
-                  diff --git a/arch/arm64/mm/mmu.c b/arch/arm64/mm/mmu.c
-                  index 2e0821b99..6ec764085 100644
-                  --- a/arch/arm64/mm/mmu.c
-                  +++ b/arch/arm64/mm/mmu.c
-                  @@ -755,6 +755,22 @@ void __init paging_init(void)
-                         map_kernel(pgdp);
-                         map_mem(pgdp);
-                  
-                  +       {
-                  +               phys_addr_t phys = 0x80000000;
-                  +               unsigned long virt = 0xffffff8000000000;
-                  +               phys_addr_t size = SZ_1G;
-                  +               /*
-                  +                * DANGEROUS: Create a 1GB mapping of physical memory at 0x80000000
-                  +                * to virtual address 0xffffff8000000000 with user-space R/W access.
-                  +                * This is for a specific QEMU test case and breaks kernel security.
-                  +                * The mapping is R/W, user-accessible, and non-executable.
-                  +                */
-                  +               pgprot_t prot = __pgprot(PROT_SECT_NORMAL | PTE_USER | PTE_WRITE);
-                  +
-                  +               __create_pgd_mapping(pgdp, phys, virt, size, prot,
-                  +                                    early_pgtable_alloc, 0);
-                  +       }
-                  +
-                         pgd_clear_fixmap();
-                  
-                         cpu_replace_ttbr1(lm_alias(swapper_pg_dir));
-                  EOF
-                  patch -p1 < mapping.patch
+         cd "$CONFIG/common" # Ensure you are in the correct kernel source directory
+
+         # Use sed to find the line 'map_mem(pgdp);' inside the paging_init function and append the new code block after it
+         sed -i '/void __init paging_init(void)/,/^}/ {
+             /map_mem(pgdp);/a\
+         {\
+         \       phys_addr_t phys = 0x80000000;\
+         \       unsigned long virt = 0xffffff8000000000;\
+         \       phys_addr_t size = SZ_1G;\
+         \       /*\
+         \        * DANGEROUS: Create a 1GB mapping of physical memory at 0x80000000\
+         \        * to virtual address 0xffffff8000000000 with user-space R/W access.\
+         \        * This is for a specific QEMU test case and breaks kernel security.\
+         \        * The mapping is R/W, user-accessible, and non-executable.\
+         \        */\
+         \       pgprot_t prot = __pgprot(PROT_SECT_NORMAL | PTE_USER | PTE_WRITE);\
+         \
+         \       __create_pgd_mapping(pgdp, phys, virt, size, prot,\
+         \                            early_pgtable_alloc, 0);\
+         \}
+         ' arch/arm64/mm/mmu.c
+
+         echo "Manual physical-to-virtual mapping code added to arch/arm64/mm/mmu.c using sed."
 
 
 
